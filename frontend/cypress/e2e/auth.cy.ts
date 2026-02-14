@@ -1,4 +1,3 @@
-/// <reference types="cypress" />
 describe('Authentication Flow', () => {
   it('should show login form', () => {
     cy.visit('/auth/login');

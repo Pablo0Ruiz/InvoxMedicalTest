@@ -36,14 +36,14 @@ const Dashboard = () => {
                 <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700 backdrop-blur-sm shadow-xl">
                         <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
-                            <span className="text-2xl">🎙️</span> Nueva Grabación
+                            Nueva Grabación
                         </h2>
                         <VoiceRecorder />
                     </div>
 
                     <div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-700 backdrop-blur-sm shadow-xl">
                         <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
-                            <span className="text-2xl">📁</span> Subir Audio
+                            Subir Audio
                         </h2>
                         <UploadFile />
                     </div>
