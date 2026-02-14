@@ -1,0 +1,228 @@
+org: testproject01
+app: server-vocali
+service: server-vocali
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-west-2
+  stage: test
+
+  httpApi:
+    cors:
+      allowedOrigins:
+        - '*'
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - OPTIONS
+    authorizers:
+      cognitoAuthorizer:
+        type: jwt
+        identitySource: $request.header.Authorization
+        issuerUrl:
+          Fn::Sub: https://cognito-idp.${self:provider.region}.amazonaws.com/${UserPool}
+        audience:
+          - !Ref UserPoolClient
+
+  environment:
+    USER_TABLE_NAME: UserTable-${self:provider.stage}
+    TRANSCRIPTIONS_TABLE_NAME: TranscriptionsTable-${self:provider.stage}
+    VOZ_BUCKET_NAME: vocali-audio-transcriptions-${self:provider.stage}
+    USER_POOL_ID: !Ref UserPool
+    USER_POOL_CLIENT_ID: !Ref UserPoolClient
+    SPEECHMATICS_API_KEY: ${env:SPEECHMATICS_API_KEY}
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt: [UserTable, Arn]
+            - Fn::GetAtt: [TranscriptionsTable, Arn]
+            - Fn::Join:
+                - '/'
+                - - Fn::GetAtt: [TranscriptionsTable, Arn]
+                  - 'index'
+                  - 'UserIndex'
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+          Resource:
+            - Fn::Join: ['', [Fn::GetAtt: [VozBucket, Arn], '/*']]
+
+plugins:
+
+  - serverless-offline
+
+functions:
+  apiOptions:
+    handler: src/lambda/cors/handler.options
+    events:
+      - httpApi:
+          path: /{proxy+}
+          method: OPTIONS
+
+  api:
+    handler: handler.handler
+    events:
+      - httpApi:
+          path: /{proxy+}
+          method: ANY
+          authorizer:
+            name: cognitoAuthorizer
+
+
+  postConfirmation:
+    handler: src/lambda/auth/handler.postConfirmation
+    events:
+      - cognitoUserPool:
+          pool: UserPool
+          trigger: PostConfirmation
+
+  transcription:
+    handler: src/lambda/transcription/handler.getFile
+    events:
+      - httpApi:
+          path: /transcription/file
+          method: GET
+          authorizer:
+            name: cognitoAuthorizer
+
+  getTranscriptions:
+    handler: src/lambda/transcription/handler.getAll
+    events:
+      - httpApi:
+          path: /transcription
+          method: GET
+          authorizer:
+            name: cognitoAuthorizer
+
+  speechToken:
+    handler: src/lambda/transcription/handler.getToken
+    events:
+      - httpApi:
+          path: /transcription/token
+          method: GET
+          authorizer:
+            name: cognitoAuthorizer
+
+  createTranscription:
+    handler: src/lambda/transcription/handler.create
+    events:
+      - httpApi:
+          path: /transcription
+          method: POST
+          authorizer:
+            name: cognitoAuthorizer
+
+  generateUploadUrl:
+    handler: src/lambda/transcription/handler.generateUploadUrl
+    events:
+      - httpApi:
+          path: /transcription/upload-url
+          method: POST
+          authorizer:
+            name: cognitoAuthorizer
+
+  transcribeFile:
+    handler: src/lambda/transcription/handler.transcribeFile
+    events:
+      - httpApi:
+          path: /transcription/transcribe-file
+          method: POST
+          authorizer:
+            name: cognitoAuthorizer
+
+
+resources:
+  Resources:
+    UserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: vocali-user-pool-${self:provider.stage}
+        UsernameAttributes:
+          - email
+        AutoVerifiedAttributes:
+          - email
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireUppercase: true
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireSymbols: false
+
+    UserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: vocali-user-pool-client-${self:provider.stage}
+        UserPoolId: !Ref UserPool
+        GenerateSecret: false
+        ExplicitAuthFlows:
+          - ALLOW_USER_PASSWORD_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+          - ALLOW_USER_SRP_AUTH
+        SupportedIdentityProviders:
+          - COGNITO
+        AllowedOAuthFlowsUserPoolClient: false
+
+    UserTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: UserTable-${self:provider.stage}
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+    
+    TranscriptionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: TranscriptionsTable-${self:provider.stage}
+        AttributeDefinitions:
+          - AttributeName: transcriptionId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: transcriptionId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UserIndex
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    VozBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: vocali-audio-transcriptions-${self:provider.stage}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders:
+                - "*"
+              AllowedMethods:
+                - GET
+                - PUT
+                - HEAD
+              AllowedOrigins:
+                - "*"
+

@@ -1,0 +1,39 @@
+{
+  "name": "server-vocali",
+  "version": "1.0.0",
+  "description": "Serverless backend",
+  "scripts": {
+    "dev": "ts-node handler.ts",
+    "build": "tsc",
+    "deploy": "serverless deploy",
+    "deploy:prod": "serverless deploy --stage prod",
+    "remove": "serverless remove",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.987.0",
+    "@aws-sdk/client-s3": "^3.988.0",
+    "@aws-sdk/lib-dynamodb": "^3.987.0",
+    "@aws-sdk/s3-request-presigner": "^3.988.0",
+    "@speechmatics/auth": "^0.1.0",
+    "@speechmatics/real-time-client": "^8.3.0",
+    "aws-lambda": "^1.0.7",
+    "express": "^4.19.2",
+    "serverless-http": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.160",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.2.3",
+    "jest": "^30.2.0",
+    "serverless": "^4.32.0",
+    "serverless-offline": "^14.4.0",
+    "serverless-plugin-typescript": "^2.1.5",
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}
