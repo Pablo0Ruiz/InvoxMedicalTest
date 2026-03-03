@@ -1,76 +1,47 @@
-<!--
-title: 'Serverless Framework Node Express API on AWS'
-description: 'This template demonstrates how to develop and deploy a simple Node Express API running on AWS Lambda using the Serverless Framework.'
-layout: Doc
-framework: v4
-platform: AWS
-language: nodeJS
-priority: 1
-authorLink: 'https://github.com/serverless'
-authorName: 'Serverless, Inc.'
-authorAvatar: 'https://avatars1.githubusercontent.com/u/13742415?s=200&v=4'
--->
+# Backend: API de Transcripción Médica (Server-Vocali)
 
-# Serverless Framework Node Express API on AWS
+Este proyecto backend forma parte de la solución para **disminuir la carga administrativa de los doctores mediante la transcripción de voz**, permitiendo la generación eficiente de recetas e informes clínicos.
 
-This template demonstrates how to develop and deploy a simple Node Express API service running on AWS Lambda using the Serverless Framework.
+## Arquitectura
 
-This template configures a single function, `api`, which is responsible for handling all incoming requests using the `httpApi` event. To learn more about `httpApi` event configuration options, please refer to [httpApi event docs](https://www.serverless.com/framework/docs/providers/aws/events/http-api/). As the event is configured in a way to accept all incoming requests, the Express.js framework is responsible for routing and handling requests internally. This implementation uses the `serverless-http` package to transform the incoming event request payloads to payloads compatible with Express.js. To learn more about `serverless-http`, please refer to the [serverless-http README](https://github.com/dougmoscrop/serverless-http).
+El backend está construido bajo una **arquitectura Serverless** utilizando **Serverless Framework** sobre **AWS** y programado en **Node.js con TypeScript**.
 
-## Usage
+Se ha implementado una rigurosa arquitectura por capas (Layered Architecture):
+- **Infraestructura como Código (IaC):** `serverless.yml` define integralmente la infraestructura: Cognito para autenticación, DynamoDB (almacenamiento de metadatos), S3 (almacenamiento de audios) y API Gateway + Lambdas.
+- **Capa de Controladores (`src/lambda/`):** Puntos de entrada organizados por dominio (`auth/`, `cors/`, `transcription/`). Estos actúan como adaptadores para procesar el evento HTTP y delegar la operación en los servicios, manteniendo la responsabilidad única.
+- **Capa de Servicios (`src/services/`):** Concentra la lógica de negocio sólida y testeable, aislada de los detalles HTTP:
+  - `dynamodbClient.ts`: Persistencia de las transcripciones y consultas ligadas a los usuarios.
+  - `S3Client.ts`: Gestión de la carga y descarga de archivos de audio en Amazon S3.
+  - `speech.ts`: Integración especializada con la API externa de transcripción de Speechmatics.
 
-### Deployment
+## Ejecución y Despliegue
 
-Install dependencies with:
+### Requisitos
+- Node.js versión 20.x
+- Cuenta configurada en AWS
+- Serverless Framework instalado globalmente (`npm install -g serverless`)
 
-```
+### Instalación
+
+```bash
 npm install
+# o con pnpm
+pnpm install
 ```
 
-and then deploy with:
+### Desarrollo Local
 
+Para ejecutar el emulador de AWS Lambda localmente:
+
+```bash
+serverless dev
+# o usando serverless-offline, según scripts configurados
 ```
+
+### Despliegue en AWS
+
+Asegúrate de tener tus credenciales de AWS configuradas correctamente (AWS CLI o variables de entorno):
+
+```bash
 serverless deploy
 ```
-
-After running deploy, you should see output similar to:
-
-```
-Deploying "aws-node-express-api" to stage "dev" (us-east-1)
-
-✔ Service deployed to stack aws-node-express-api-dev (96s)
-
-endpoint: ANY - https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com
-functions:
-  api: aws-node-express-api-dev-api (2.3 kB)
-```
-
-_Note_: In current form, after deployment, your API is public and can be invoked by anyone. For production deployments, you might want to configure an authorizer. For details on how to do that, refer to [`httpApi` event docs](https://www.serverless.com/framework/docs/providers/aws/events/http-api/).
-
-### Invocation
-
-After successful deployment, you can call the created application via HTTP:
-
-```
-curl https://xxxxxxx.execute-api.us-east-1.amazonaws.com/
-```
-
-Which should result in the following response:
-
-```json
-{ "message": "Hello from root!" }
-```
-
-### Local development
-
-The easiest way to develop and test your function is to use the `dev` command:
-
-```
-serverless dev
-```
-
-This will start a local emulator of AWS Lambda and tunnel your requests to and from AWS Lambda, allowing you to interact with your function as if it were running in the cloud.
-
-Now you can invoke the function as before, but this time the function will be executed locally. Now you can develop your function locally, invoke it, and see the results immediately without having to re-deploy.
-
-When you are done developing, don't forget to run `serverless deploy` to deploy the function to the cloud.
